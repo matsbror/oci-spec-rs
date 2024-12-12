@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs,
-    io::{BufReader, BufWriter, Write},
+    io::{BufReader, BufWriter, Read, Write},
     path::{Path, PathBuf},
 };
 
@@ -199,8 +199,21 @@ impl Spec {
         let path = path.as_ref();
         let file = fs::File::open(path)?;
         let reader = BufReader::new(file);
-        let s = serde_json::from_reader(reader)?;
-        Ok(s)
+
+        match serde_json::from_reader(reader) {
+            Ok(s) => Ok(s),
+            Err(e) => {
+                // If there's an error, read and print the file contents
+                let mut file = fs::File::open(path)?;
+                let mut contents = String::new();
+                file.read_to_string(&mut contents)?;
+                println!("Failed to parse JSON. File contents:\n{}", contents);
+                Err(OciSpecError::from(e))
+            }
+        }
+
+        // let s = serde_json::from_reader(reader)?;
+        // Ok(s)
     }
 
     /// Save a `Spec` to the provided JSON file `path`.
